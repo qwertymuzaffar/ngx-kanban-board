@@ -4,6 +4,7 @@ import {
   computed,
   input,
   output,
+  signal,
 } from '@angular/core';
 import {
   CdkDrag,
@@ -18,8 +19,12 @@ import type { CardMovedEvent, KanbanCard, KanbanColumn } from './kanban.models';
 /**
  * Drag-and-drop kanban board built on Angular CDK.
  *
+ * Pointer dragging is CDK-based; a keyboard mode mirrors it for
+ * accessibility: focus a card, Space/Enter lifts it, arrow keys move
+ * it within and across columns, Space drops, Escape cancels.
+ *
  * The component treats `columns` as its working model and emits
- * `cardMoved` / `columnsChange` after every drop, so consumers can
+ * `cardMoved` / `columnsChange` after every move, so consumers can
  * persist changes or run the board fully controlled.
  */
 @Component({
@@ -37,6 +42,9 @@ export class KanbanBoardComponent {
   cardMoved = output<CardMovedEvent>();
   cardClicked = output<KanbanCard>();
   columnsChange = output<KanbanColumn[]>();
+
+  /** Card currently lifted via keyboard, if any. */
+  readonly liftedCardId = signal<string | null>(null);
 
   readonly overLimit = computed(() =>
     new Set(
@@ -61,12 +69,63 @@ export class KanbanBoardComponent {
       );
     }
 
-    this.cardMoved.emit({
-      card: target.cards[event.currentIndex],
-      fromColumnId: source.id,
-      toColumnId: target.id,
-      toIndex: event.currentIndex,
-    });
+    this.emitMove(target.cards[event.currentIndex], source.id, target.id, event.currentIndex);
+  }
+
+  /** Keyboard interaction: Space/Enter lift & drop, arrows move, Escape cancels. */
+  onCardKeydown(event: KeyboardEvent, card: KanbanCard, column: KanbanColumn): void {
+    if (this.disabled()) return;
+
+    const key = event.key;
+    const lifted = this.liftedCardId() === card.id;
+
+    if (key === ' ' || key === 'Enter') {
+      event.preventDefault();
+      this.liftedCardId.set(lifted ? null : card.id);
+      return;
+    }
+    if (!lifted) return;
+
+    if (key === 'Escape') {
+      event.preventDefault();
+      this.liftedCardId.set(null);
+      return;
+    }
+
+    const vertical = key === 'ArrowUp' ? -1 : key === 'ArrowDown' ? 1 : 0;
+    const horizontal = key === 'ArrowLeft' ? -1 : key === 'ArrowRight' ? 1 : 0;
+    if (!vertical && !horizontal) return;
+    event.preventDefault();
+
+    const cols = this.columns();
+    const colIndex = cols.indexOf(column);
+    const cardIndex = column.cards.indexOf(card);
+
+    if (vertical) {
+      const next = cardIndex + vertical;
+      if (next < 0 || next >= column.cards.length) return;
+      moveItemInArray(column.cards, cardIndex, next);
+      this.emitMove(card, column.id, column.id, next);
+    } else {
+      const targetCol = cols[colIndex + horizontal];
+      if (!targetCol) return;
+      const insertAt = Math.min(cardIndex, targetCol.cards.length);
+      transferArrayItem(column.cards, targetCol.cards, cardIndex, insertAt);
+      this.emitMove(card, column.id, targetCol.id, insertAt);
+    }
+    this.refocus(card.id);
+  }
+
+  private emitMove(card: KanbanCard, fromColumnId: string, toColumnId: string, toIndex: number): void {
+    this.cardMoved.emit({ card, fromColumnId, toColumnId, toIndex });
     this.columnsChange.emit(this.columns());
+  }
+
+  /** Keep focus on the moved card after the DOM re-renders. */
+  private refocus(cardId: string): void {
+    queueMicrotask(() => {
+      const el = document.querySelector<HTMLElement>(`[data-nkb-card-id="${CSS.escape(cardId)}"]`);
+      el?.focus();
+    });
   }
 }

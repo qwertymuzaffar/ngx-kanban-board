@@ -144,3 +144,16 @@
 .nkb-cards.cdk-drop-list-dragging .nkb-card:not(.cdk-drag-placeholder) {
   transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
 }
+
+/* Keyboard-lifted card */
+.nkb-card:focus-visible {
+  outline: 2px solid var(--nkb-accent);
+  outline-offset: 1px;
+}
+
+.nkb-card.nkb-lifted {
+  box-shadow: var(--nkb-card-shadow-drag);
+  outline: 2px dashed var(--nkb-accent);
+  outline-offset: 1px;
+  transform: scale(1.02);
+}

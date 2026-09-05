@@ -23,8 +23,13 @@
           <article
             class="nkb-card"
             cdkDrag
+            [attr.data-nkb-card-id]="card.id"
+            [attr.tabindex]="disabled() ? null : 0"
+            [attr.aria-grabbed]="liftedCardId() === card.id"
+            [class.nkb-lifted]="liftedCardId() === card.id"
             [style.--nkb-card-accent]="card.color ?? null"
             (click)="cardClicked.emit(card)"
+            (keydown)="onCardKeydown($event, card, column)"
           >
             <div class="nkb-card-title">{{ card.title }}</div>
             @if (card.description) {

@@ -156,4 +156,78 @@ describe('KanbanBoardComponent', () => {
       expect(list.injector.get(CdkDropList).disabled).toBe(true);
     }
   });
+
+  describe('keyboard drag-and-drop', () => {
+    const key = (target: Element, k: string) => {
+      const ev = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true });
+      target.dispatchEvent(ev);
+      fixture.detectChanges();
+      return ev;
+    };
+    const firstCard = () => el().querySelector('.nkb-card')!;
+
+    it('lifts a card with Space and marks it', () => {
+      key(firstCard(), ' ');
+      expect(board.liftedCardId()).toBe('a');
+      expect(firstCard().classList).toContain('nkb-lifted');
+    });
+
+    it('drops with a second Space', () => {
+      key(firstCard(), ' ');
+      key(firstCard(), ' ');
+      expect(board.liftedCardId()).toBeNull();
+    });
+
+    it('cancels with Escape', () => {
+      key(firstCard(), 'Enter');
+      key(firstCard(), 'Escape');
+      expect(board.liftedCardId()).toBeNull();
+    });
+
+    it('moves a lifted card down within its column and emits', () => {
+      key(firstCard(), ' ');
+      key(firstCard(), 'ArrowDown');
+      expect(host.columns[0].cards.map((c) => c.id)).toEqual(['b', 'a']);
+      expect(host.moved[0]).toEqual(
+        expect.objectContaining({ fromColumnId: 'todo', toColumnId: 'todo', toIndex: 1 }),
+      );
+    });
+
+    it('moves a lifted card to the next column with ArrowRight', () => {
+      key(firstCard(), ' ');
+      key(firstCard(), 'ArrowRight');
+      expect(host.columns[0].cards.map((c) => c.id)).toEqual(['b']);
+      expect(host.columns[1].cards.map((c) => c.id)).toEqual(['a', 'c', 'd']);
+      expect(host.moved[0]).toEqual(
+        expect.objectContaining({ fromColumnId: 'todo', toColumnId: 'doing', toIndex: 0 }),
+      );
+    });
+
+    it('ignores arrows when no card is lifted', () => {
+      key(firstCard(), 'ArrowDown');
+      expect(host.columns[0].cards.map((c) => c.id)).toEqual(['a', 'b']);
+      expect(host.moved).toHaveLength(0);
+    });
+
+    it('does not move past column edges', () => {
+      key(firstCard(), ' ');
+      key(firstCard(), 'ArrowUp');
+      expect(host.columns[0].cards.map((c) => c.id)).toEqual(['a', 'b']);
+      key(firstCard(), 'ArrowLeft');
+      expect(host.columns[0].cards.map((c) => c.id)).toEqual(['a', 'b']);
+      expect(host.moved).toHaveLength(0);
+    });
+
+    it('ignores keyboard when disabled', () => {
+      const f2 = TestBed.createComponent(HostComponent);
+      f2.componentInstance.disabled = true;
+      f2.detectChanges();
+      const card = (f2.nativeElement as HTMLElement).querySelector('.nkb-card')!;
+      card.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+      f2.detectChanges();
+      const b2: KanbanBoardComponent = f2.debugElement.children[0].componentInstance;
+      expect(b2.liftedCardId()).toBeNull();
+      expect(card.getAttribute('tabindex')).toBeNull();
+    });
+  });
 });
