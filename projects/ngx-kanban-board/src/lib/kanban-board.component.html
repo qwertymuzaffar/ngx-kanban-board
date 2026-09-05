@@ -4,8 +4,10 @@
       class="nkb-column"
       [class.nkb-over-limit]="overLimit().has(column.id)"
       [style.--nkb-column-accent]="column.color ?? null"
+      [style.animation-delay.ms]="$index * 60"
     >
       <header class="nkb-column-header">
+        <span class="nkb-dot"></span>
         <h3 class="nkb-column-title">{{ column.title }}</h3>
         <span class="nkb-count" [class.nkb-count-over]="overLimit().has(column.id)">
           {{ column.cards.length }}@if (column.wipLimit !== undefined) {<span>/{{ column.wipLimit }}</span>}
@@ -28,6 +30,7 @@
             [attr.aria-grabbed]="liftedCardId() === card.id"
             [class.nkb-lifted]="liftedCardId() === card.id"
             [style.--nkb-card-accent]="card.color ?? null"
+            [style.animation-delay.ms]="$index * 45"
             (click)="cardClicked.emit(card)"
             (keydown)="onCardKeydown($event, card, column)"
           >
