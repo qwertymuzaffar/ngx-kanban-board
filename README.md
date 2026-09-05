@@ -5,6 +5,8 @@
 [![license](https://img.shields.io/npm/l/ngx-kanban-board)](LICENSE)
 [![Angular](https://img.shields.io/badge/Angular-%3E%3D19-dd0031)](https://angular.dev)
 
+**[Live Storybook demo](https://qwertymuzaffar.github.io/ngx-kanban-board/)**
+
 Drag-and-drop kanban board component for Angular - built on Angular CDK, with a signals-based API, WIP limits, and CSS-custom-property theming. Zero dependencies beyond `@angular/cdk`.
 
 ## Features
