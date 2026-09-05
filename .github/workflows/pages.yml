@@ -23,6 +23,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --legacy-peer-deps
+      - run: npx ng build ngx-kanban-board
       - run: npx ng run demo:build-storybook
         env:
           CI: "true"

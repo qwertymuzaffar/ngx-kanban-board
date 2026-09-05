@@ -124,7 +124,11 @@ export class KanbanBoardComponent {
   /** Keep focus on the moved card after the DOM re-renders. */
   private refocus(cardId: string): void {
     queueMicrotask(() => {
-      const el = document.querySelector<HTMLElement>(`[data-nkb-card-id="${CSS.escape(cardId)}"]`);
+      const escaped =
+        typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+          ? CSS.escape(cardId)
+          : cardId.replace(/["\\]/g, '\\$&');
+      const el = document.querySelector<HTMLElement>(`[data-nkb-card-id="${escaped}"]`);
       el?.focus();
     });
   }
