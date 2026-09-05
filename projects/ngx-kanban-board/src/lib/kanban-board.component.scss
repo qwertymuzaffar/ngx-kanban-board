@@ -201,10 +201,28 @@
 
 /* --------------------------- drag & keyboard --------------------------- */
 
+/*
+ * The drag preview is appended to document.body, outside :host, so the
+ * theme custom properties are out of scope there. Every value used by
+ * the preview carries a literal fallback; apps theming via :root-level
+ * variables still override these.
+ */
 .nkb-card.cdk-drag-preview {
-  box-shadow: var(--nkb-card-shadow-drag);
+  box-shadow: var(--nkb-card-shadow-drag, 0 16px 40px rgba(15, 23, 42, 0.24));
   transform: rotate(2.5deg) scale(1.03);
-  border-color: color-mix(in srgb, var(--nkb-accent) 45%, var(--nkb-card-border));
+  background: var(--nkb-card-bg, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--nkb-accent, #3b82f6) 45%, var(--nkb-card-border, #e6eaf0));
+  border-left: 3px solid var(--nkb-card-accent, var(--nkb-card-border, #e6eaf0));
+  border-radius: var(--nkb-card-radius, 10px);
+  padding: 11px 13px;
+  cursor: grabbing;
+}
+
+.nkb-card.cdk-drag-preview .nkb-card-title { color: var(--nkb-ink, #1e293b); }
+.nkb-card.cdk-drag-preview .nkb-card-desc { color: var(--nkb-muted, #64748b); }
+.nkb-card.cdk-drag-preview .nkb-tag {
+  background: color-mix(in srgb, var(--nkb-card-accent, var(--nkb-accent, #3b82f6)) 11%, transparent);
+  color: color-mix(in srgb, var(--nkb-card-accent, var(--nkb-accent, #3b82f6)) 85%, var(--nkb-ink, #1e293b));
 }
 
 .nkb-card.cdk-drag-animating {
