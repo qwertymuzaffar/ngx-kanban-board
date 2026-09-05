@@ -1,0 +1,29 @@
+{
+  "name": "ngx-kanban-board",
+  "version": "0.0.1",
+  "peerDependencies": {
+    "@angular/common": "^22.1.0",
+    "@angular/core": "^22.1.0",
+    "@angular/cdk": ">=19.0.0"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false,
+  "description": "Drag-and-drop kanban board component for Angular - CDK-based, signals API, WIP limits, themeable via CSS custom properties.",
+  "license": "MIT",
+  "author": "Muzaffar Qosimov",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qwertymuzaffar/ngx-kanban-board.git"
+  },
+  "keywords": [
+    "angular",
+    "kanban",
+    "board",
+    "drag-and-drop",
+    "cdk",
+    "component",
+    "ngx"
+  ]
+}

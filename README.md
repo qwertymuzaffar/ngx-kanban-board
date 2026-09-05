@@ -1,59 +1,84 @@
-# NgxKanbanBoard
+# ngx-kanban-board
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.7.
+Drag-and-drop kanban board component for Angular - built on Angular CDK, with a signals-based API, WIP limits, and CSS-custom-property theming. Zero dependencies beyond `@angular/cdk`.
 
-## Development server
+## Features
 
-To start a local development server, run:
+- **Drag & drop** across and within columns (Angular CDK `DropListGroup`)
+- **WIP limits** - columns highlight and badge in red when over their `wipLimit`
+- **Signals API** - `input()`/`output()` based, `OnPush`, works controlled or uncontrolled
+- **Themeable** - every color and radius is a `--nkb-*` CSS custom property (dark theme = a few variables)
+- **Tested & documented** - 95%+ unit-test coverage, Storybook stories for every state
 
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Install
 
 ```bash
-ng generate component component-name
+npm install ngx-kanban-board @angular/cdk
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Usage
+
+```ts
+import { KanbanBoardComponent, KanbanColumn, CardMovedEvent } from 'ngx-kanban-board';
+
+@Component({
+  imports: [KanbanBoardComponent],
+  template: `<ngx-kanban-board [columns]="columns" (cardMoved)="persist($event)" />`,
+})
+export class BoardPage {
+  columns: KanbanColumn[] = [
+    { id: 'todo', title: 'To Do', cards: [{ id: '1', title: 'First task' }] },
+    { id: 'doing', title: 'Doing', wipLimit: 3, cards: [] },
+    { id: 'done', title: 'Done', cards: [] },
+  ];
+
+  persist(e: CardMovedEvent) { /* e.card, e.fromColumnId, e.toColumnId, e.toIndex */ }
+}
+```
+
+## API
+
+### Inputs
+
+| Input | Type | Default | Description |
+|---|---|---|---|
+| `columns` | `KanbanColumn[]` | required | Board model; mutated in place on drop |
+| `disabled` | `boolean` | `false` | Read-only board (dragging off) |
+
+### Outputs
+
+| Output | Payload | Fires |
+|---|---|---|
+| `cardMoved` | `CardMovedEvent` | After any drop (reorder or transfer) |
+| `cardClicked` | `KanbanCard` | Card click |
+| `columnsChange` | `KanbanColumn[]` | After any drop, with the updated model |
+
+### Theming
+
+Override CSS custom properties on the host or any ancestor:
+
+```css
+ngx-kanban-board {
+  --nkb-bg: #0f172a;
+  --nkb-column-bg: #1e293b;
+  --nkb-card-bg: #273449;
+  --nkb-ink: #e2e8f0;
+  --nkb-accent: #38bdf8;
+}
+```
+
+Full list in `kanban-board.component.scss`.
+
+## Development
 
 ```bash
-ng generate --help
+npm start                          # demo app
+ng test ngx-kanban-board           # unit tests (vitest)
+ng run demo:storybook              # storybook
 ```
 
-## Building
+Requires Node 22+ and Angular 19+.
 
-To build the project run:
+## License
 
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+MIT

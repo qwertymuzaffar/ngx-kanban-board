@@ -1,0 +1,48 @@
+<div class="nkb-board" cdkDropListGroup>
+  @for (column of columns(); track column.id) {
+    <section
+      class="nkb-column"
+      [class.nkb-over-limit]="overLimit().has(column.id)"
+      [style.--nkb-column-accent]="column.color ?? null"
+    >
+      <header class="nkb-column-header">
+        <h3 class="nkb-column-title">{{ column.title }}</h3>
+        <span class="nkb-count" [class.nkb-count-over]="overLimit().has(column.id)">
+          {{ column.cards.length }}@if (column.wipLimit !== undefined) {<span>/{{ column.wipLimit }}</span>}
+        </span>
+      </header>
+
+      <div
+        class="nkb-cards"
+        cdkDropList
+        [cdkDropListData]="column.cards"
+        [cdkDropListDisabled]="disabled()"
+        (cdkDropListDropped)="onDrop($event, column)"
+      >
+        @for (card of column.cards; track card.id) {
+          <article
+            class="nkb-card"
+            cdkDrag
+            [style.--nkb-card-accent]="card.color ?? null"
+            (click)="cardClicked.emit(card)"
+          >
+            <div class="nkb-card-title">{{ card.title }}</div>
+            @if (card.description) {
+              <p class="nkb-card-desc">{{ card.description }}</p>
+            }
+            @if (card.tags?.length) {
+              <div class="nkb-tags">
+                @for (tag of card.tags; track tag) {
+                  <span class="nkb-tag">{{ tag }}</span>
+                }
+              </div>
+            }
+            <div class="nkb-card-placeholder" *cdkDragPlaceholder></div>
+          </article>
+        } @empty {
+          <div class="nkb-empty">No cards</div>
+        }
+      </div>
+    </section>
+  }
+</div>
