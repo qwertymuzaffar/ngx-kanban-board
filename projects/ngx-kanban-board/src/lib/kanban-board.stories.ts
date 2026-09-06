@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/angular';
 import { KanbanBoardComponent } from './kanban-board.component';
-import type { KanbanColumn } from './kanban.models';
+import type { ColumnRenamedEvent, KanbanColumn } from './kanban.models';
 
 const columns = (): KanbanColumn[] => [
   {
@@ -119,8 +119,45 @@ export const DarkTheme: Story = {
   ],
 };
 
-/** v0.4: ghost add-column button + inline title renaming (double-click a title). */
+/**
+ * v0.4: ghost add-column button + inline title renaming (double-click a title).
+ * The board only emits addColumnRequested - creating the column is the
+ * consumer's job - so this story wires a handler that appends one, mirroring
+ * the README "Managing columns" recipe.
+ */
 export const ColumnEditing: Story = {
   args: { columns: columns(), showAddColumn: true, editableTitles: true },
+  render: (args) => {
+    const actions = args as unknown as {
+      addColumnRequested?: () => void;
+      columnRenamed?: (e: ColumnRenamedEvent) => void;
+    };
+    const palette = ['#8b5cf6', '#06b6d4', '#f97316', '#ec4899'];
+    let added = 0;
+    return {
+      props: {
+        ...args,
+        onAddColumn: () => {
+          added += 1;
+          args.columns.push({
+            id: `col-${added}`,
+            title: `New Column ${added}`,
+            color: palette[(added - 1) % palette.length],
+            cards: [],
+          });
+          actions.addColumnRequested?.();
+        },
+        onRenamed: (e: ColumnRenamedEvent) => actions.columnRenamed?.(e),
+      },
+      template: `
+        <ngx-kanban-board
+          [columns]="columns"
+          [showAddColumn]="showAddColumn"
+          [editableTitles]="editableTitles"
+          (addColumnRequested)="onAddColumn()"
+          (columnRenamed)="onRenamed($event)"
+        />`,
+    };
+  },
 };
 
