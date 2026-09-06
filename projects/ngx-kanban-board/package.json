@@ -1,6 +1,6 @@
 {
   "name": "ngx-kanban-board",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "peerDependencies": {
     "@angular/common": ">=19.0.0",
     "@angular/core": ">=19.0.0",

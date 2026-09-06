@@ -224,9 +224,14 @@ export class KanbanBoardComponent {
     this.columnsChange.emit(this.columns());
   }
 
-  /** Keep focus on the moved card after the DOM re-renders. */
+  /**
+   * Keep focus on the moved card after the DOM re-renders. setTimeout,
+   * not queueMicrotask: cross-column moves recreate the card element,
+   * and change detection is itself a microtask, so the new element does
+   * not exist until the next macrotask (same timing as startEditing).
+   */
   private refocus(cardId: string): void {
-    queueMicrotask(() => {
+    setTimeout(() => {
       const escaped =
         typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
           ? CSS.escape(cardId)
