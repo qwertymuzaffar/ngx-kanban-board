@@ -25,5 +25,12 @@
     "cdk",
     "component",
     "ngx"
-  ]
+  ],
+  "publishConfig": {
+    "access": "public",
+    "directory": "../../dist/ngx-kanban-board"
+  },
+  "scripts": {
+    "prepublishOnly": "node -e \"console.error('ngx-kanban-board is published from dist/ngx-kanban-board (npm run release does this). Refusing to publish the sources.');process.exit(1)\""
+  }
 }
