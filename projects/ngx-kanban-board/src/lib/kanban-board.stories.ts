@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/angular';
 import { KanbanBoardComponent } from './kanban-board.component';
-import type { ColumnRenamedEvent, KanbanColumn } from './kanban.models';
+import type { CardAddedEvent, ColumnRenamedEvent, KanbanColumn } from './kanban.models';
 
 const columns = (): KanbanColumn[] => [
   {
@@ -66,6 +66,7 @@ const meta: Meta<KanbanBoardComponent> = {
     columnsChange: { action: 'columnsChange' },
     addColumnRequested: { action: 'addColumnRequested' },
     columnRenamed: { action: 'columnRenamed' },
+    cardAdded: { action: 'cardAdded' },
   },
 };
 export default meta;
@@ -120,17 +121,19 @@ export const DarkTheme: Story = {
 };
 
 /**
- * v0.4: ghost add-column button + inline title renaming (double-click a title).
- * The board only emits addColumnRequested - creating the column is the
- * consumer's job - so this story wires a handler that appends one, mirroring
- * the README "Managing columns" recipe.
+ * v0.4/v0.5 editing: ghost add-column button, inline title renaming
+ * (double-click a title), and a per-column add-card composer. Cards are
+ * created by the board itself; columns are the consumer's job - the board
+ * only emits addColumnRequested - so this story wires a handler that
+ * appends one, mirroring the README "Managing columns" recipe.
  */
 export const ColumnEditing: Story = {
-  args: { columns: columns(), showAddColumn: true, editableTitles: true },
+  args: { columns: columns(), showAddColumn: true, editableTitles: true, showAddCard: true },
   render: (args) => {
     const actions = args as unknown as {
       addColumnRequested?: () => void;
       columnRenamed?: (e: ColumnRenamedEvent) => void;
+      cardAdded?: (e: CardAddedEvent) => void;
     };
     const palette = ['#8b5cf6', '#06b6d4', '#f97316', '#ec4899'];
     let added = 0;
@@ -148,14 +151,17 @@ export const ColumnEditing: Story = {
           actions.addColumnRequested?.();
         },
         onRenamed: (e: ColumnRenamedEvent) => actions.columnRenamed?.(e),
+        onCardAdded: (e: CardAddedEvent) => actions.cardAdded?.(e),
       },
       template: `
         <ngx-kanban-board
           [columns]="columns"
           [showAddColumn]="showAddColumn"
           [editableTitles]="editableTitles"
+          [showAddCard]="showAddCard"
           (addColumnRequested)="onAddColumn()"
           (columnRenamed)="onRenamed($event)"
+          (cardAdded)="onCardAdded($event)"
         />`,
     };
   },

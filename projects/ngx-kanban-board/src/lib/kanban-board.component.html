@@ -70,6 +70,24 @@
           <div class="nkb-empty">No cards</div>
         }
       </div>
+
+      @if (showAddCard() && !disabled()) {
+        @if (addingCardColumnId() === column.id) {
+          <input
+            class="nkb-card-input"
+            type="text"
+            placeholder="Card title"
+            aria-label="New card title"
+            (keydown.enter)="commitAddCard(column, $any($event.target), true)"
+            (keydown.escape)="cancelAddCard()"
+            (blur)="commitAddCard(column, $any($event.target), false)"
+          />
+        } @else {
+          <button type="button" class="nkb-add-card" (click)="startAddCard(column)">
+            <span class="nkb-add-plus" aria-hidden="true">+</span> Add card
+          </button>
+        }
+      }
     </section>
   }
   @if (showAddColumn() && !disabled()) {

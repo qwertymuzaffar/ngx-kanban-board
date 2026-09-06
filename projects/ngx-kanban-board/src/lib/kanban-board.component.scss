@@ -369,8 +369,58 @@
   line-height: 1;
 }
 
+/* ----------------------------- card adding ----------------------------- */
+
+.nkb-add-card {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 10px 12px;
+  padding: 8px 11px;
+  background: transparent;
+  border: 1.5px dashed color-mix(in srgb, var(--nkb-muted) 35%, transparent);
+  border-radius: var(--nkb-card-radius);
+  color: var(--nkb-muted);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color var(--nkb-speed) var(--nkb-ease),
+    color var(--nkb-speed) var(--nkb-ease),
+    background var(--nkb-speed) var(--nkb-ease);
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--nkb-column-accent, var(--nkb-accent)) 55%, transparent);
+    color: var(--nkb-column-accent, var(--nkb-accent));
+    background: color-mix(in srgb, var(--nkb-column-accent, var(--nkb-accent)) 5%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--nkb-accent);
+    outline-offset: 1px;
+  }
+}
+
+.nkb-card-input {
+  margin: 0 10px 12px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--nkb-ink);
+  background: var(--nkb-card-bg);
+  border: 1.5px solid color-mix(in srgb, var(--nkb-accent) 55%, transparent);
+  border-radius: var(--nkb-card-radius);
+  outline: none;
+
+  &::placeholder {
+    color: color-mix(in srgb, var(--nkb-muted) 70%, transparent);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .nkb-add-column,
+  .nkb-add-card,
   .nkb-column-title.nkb-editable {
     animation: none;
     transition: none;

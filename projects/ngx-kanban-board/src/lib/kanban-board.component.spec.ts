@@ -3,7 +3,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { CdkDropList, type CdkDragDrop } from '@angular/cdk/drag-drop';
 import { KanbanBoardComponent } from './kanban-board.component';
-import type { CardMovedEvent, ColumnRenamedEvent, KanbanCard, KanbanColumn } from './kanban.models';
+import type {
+  CardAddedEvent,
+  CardMovedEvent,
+  ColumnRenamedEvent,
+  KanbanCard,
+  KanbanColumn,
+} from './kanban.models';
 
 function makeColumns(): KanbanColumn[] {
   return [
@@ -35,11 +41,13 @@ function makeColumns(): KanbanColumn[] {
     [disabled]="disabled"
     [showAddColumn]="showAddColumn"
     [editableTitles]="editableTitles"
+    [showAddCard]="showAddCard"
     (cardMoved)="moved.push($event)"
     (cardClicked)="clicked.push($event)"
     (columnsChange)="changes.push($event)"
     (addColumnRequested)="addRequests = addRequests + 1"
     (columnRenamed)="renames.push($event)"
+    (cardAdded)="added.push($event)"
   />`,
 })
 class HostComponent {
@@ -47,11 +55,13 @@ class HostComponent {
   disabled = false;
   showAddColumn = false;
   editableTitles = false;
+  showAddCard = false;
   moved: CardMovedEvent[] = [];
   clicked: KanbanCard[] = [];
   changes: KanbanColumn[][] = [];
   addRequests = 0;
   renames: ColumnRenamedEvent[] = [];
+  added: CardAddedEvent[] = [];
 }
 
 /** Minimal CdkDragDrop stub - only the fields the component reads. */
@@ -364,6 +374,113 @@ describe('KanbanBoardComponent', () => {
       dblclick(title);
       f.detectChanges();
       expect(root(f).querySelector('.nkb-title-input')).toBeNull();
+    });
+  });
+
+  describe('card adding (v0.5)', () => {
+    function createWith(overrides: Partial<HostComponent>): ComponentFixture<HostComponent> {
+      const f = TestBed.createComponent(HostComponent);
+      Object.assign(f.componentInstance, overrides);
+      f.detectChanges();
+      return f;
+    }
+    const root = (f: ComponentFixture<HostComponent>): HTMLElement => f.nativeElement;
+    const keydown = (t: Element, key: string) =>
+      t.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+
+    function openComposer(f: ComponentFixture<HostComponent>): HTMLInputElement {
+      root(f).querySelector<HTMLButtonElement>('.nkb-add-card')!.click();
+      f.detectChanges();
+      return root(f).querySelector<HTMLInputElement>('.nkb-card-input')!;
+    }
+
+    it('hides the add-card button by default and when disabled', () => {
+      expect(el().querySelector('.nkb-add-card')).toBeNull();
+      const f = createWith({ showAddCard: true, disabled: true });
+      expect(root(f).querySelector('.nkb-add-card')).toBeNull();
+    });
+
+    it('shows one add-card button per column', () => {
+      const f = createWith({ showAddCard: true });
+      expect(root(f).querySelectorAll('.nkb-add-card')).toHaveLength(3);
+    });
+
+    it('opens the composer in place of the clicked button only', () => {
+      const f = createWith({ showAddCard: true });
+      const input = openComposer(f);
+      expect(input).not.toBeNull();
+      expect(root(f).querySelectorAll('.nkb-card-input')).toHaveLength(1);
+      expect(root(f).querySelectorAll('.nkb-add-card')).toHaveLength(2);
+    });
+
+    it('creates a card on Enter, emits cardAdded + columnsChange, and stays open', () => {
+      const f = createWith({ showAddCard: true });
+      const input = openComposer(f);
+      input.value = '  Ship v0.5  ';
+      keydown(input, 'Enter');
+      f.detectChanges();
+
+      const todo = f.componentInstance.columns[0];
+      expect(todo.cards.map((c) => c.title)).toEqual(['Task A', 'Task B', 'Ship v0.5']);
+      expect(f.componentInstance.added).toHaveLength(1);
+      expect(f.componentInstance.added[0].columnId).toBe('todo');
+      expect(f.componentInstance.added[0].card.title).toBe('Ship v0.5');
+      expect(f.componentInstance.added[0].card.id).toMatch(/^nkb-/);
+      expect(f.componentInstance.changes).toHaveLength(1);
+      // rapid entry: composer stays open and is cleared
+      const after = root(f).querySelector<HTMLInputElement>('.nkb-card-input')!;
+      expect(after.value).toBe('');
+    });
+
+    it('generates a distinct id per card', () => {
+      const f = createWith({ showAddCard: true });
+      const input = openComposer(f);
+      input.value = 'One';
+      keydown(input, 'Enter');
+      input.value = 'Two';
+      keydown(input, 'Enter');
+      f.detectChanges();
+      const [a, b] = f.componentInstance.added;
+      expect(a.card.id).not.toBe(b.card.id);
+    });
+
+    it('commits and closes on blur', () => {
+      const f = createWith({ showAddCard: true });
+      const input = openComposer(f);
+      input.value = 'Blurred card';
+      input.dispatchEvent(new Event('blur'));
+      f.detectChanges();
+      expect(f.componentInstance.columns[0].cards.map((c) => c.title)).toContain('Blurred card');
+      expect(root(f).querySelector('.nkb-card-input')).toBeNull();
+    });
+
+    it('closes without adding on Escape or empty commit', () => {
+      const f = createWith({ showAddCard: true });
+      let input = openComposer(f);
+      input.value = 'Discarded';
+      keydown(input, 'Escape');
+      f.detectChanges();
+      expect(root(f).querySelector('.nkb-card-input')).toBeNull();
+
+      input = openComposer(f);
+      input.value = '   ';
+      keydown(input, 'Enter');
+      f.detectChanges();
+      expect(root(f).querySelector('.nkb-card-input')).toBeNull();
+      expect(f.componentInstance.columns[0].cards).toHaveLength(2);
+      expect(f.componentInstance.added).toHaveLength(0);
+    });
+
+    it('counts composer-added cards toward the wip limit', () => {
+      const f = createWith({ showAddCard: true });
+      const doing = root(f).querySelectorAll('.nkb-column')[1];
+      doing.querySelector<HTMLButtonElement>('.nkb-add-card')!.click();
+      f.detectChanges();
+      const input = doing.querySelector<HTMLInputElement>('.nkb-card-input')!;
+      input.value = 'Over the limit';
+      keydown(input, 'Enter');
+      f.detectChanges();
+      expect(doing.querySelector('.nkb-count')?.textContent?.replace(/\s/g, '')).toBe('3/1');
     });
   });
 });

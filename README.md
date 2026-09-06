@@ -53,6 +53,7 @@ export class BoardPage {
 | `disabled` | `boolean` | `false` | Read-only board (dragging and editing off) |
 | `showAddColumn` | `boolean` | `false` | Ghost "+ Add column" button after the last column |
 | `editableTitles` | `boolean` | `false` | Inline column renaming (double-click or Enter on a title) |
+| `showAddCard` | `boolean` | `false` | "+ Add card" composer at the foot of each column |
 
 ### Outputs
 
@@ -63,6 +64,7 @@ export class BoardPage {
 | `columnsChange` | `KanbanColumn[]` | After any drop or rename, with the updated model |
 | `addColumnRequested` | `void` | Add-column button clicked - you create the column |
 | `columnRenamed` | `ColumnRenamedEvent` | Inline rename committed (`columnId`, `title`, `previousTitle`) |
+| `cardAdded` | `CardAddedEvent` | Composer committed (`card`, `columnId`) - the board created the card |
 
 ### Managing columns
 
@@ -85,6 +87,20 @@ remove(id: string) {
   const dying = this.columns.find(c => c.id === id);
   this.columns.find(c => c.id !== id)?.cards.push(...(dying?.cards ?? []));
   this.columns = this.columns.filter(c => c.id !== id);
+}
+```
+
+### Adding cards
+
+Cards are different: with `showAddCard`, each column gets a Trello-style
+inline composer (click "+ Add card", type a title, Enter adds and keeps the
+composer open, Escape closes). The board creates the card itself with a
+generated id and reports it via `cardAdded` - swap in your own id there if
+you persist to a backend:
+
+```ts
+onCardAdded({ card, columnId }: CardAddedEvent) {
+  this.api.createCard(columnId, card.title).subscribe(saved => (card.id = saved.id));
 }
 ```
 

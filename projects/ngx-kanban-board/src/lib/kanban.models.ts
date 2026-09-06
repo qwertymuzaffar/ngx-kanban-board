@@ -29,3 +29,9 @@ export interface ColumnRenamedEvent {
   title: string;
   previousTitle: string;
 }
+
+export interface CardAddedEvent {
+  /** The card the board created; replace its generated id if you need your own. */
+  card: KanbanCard;
+  columnId: string;
+}

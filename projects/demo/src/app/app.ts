@@ -1,5 +1,5 @@
 import { Component, signal } from '@angular/core';
-import { KanbanBoardComponent, KanbanColumn, CardMovedEvent, ColumnRenamedEvent } from 'ngx-kanban-board';
+import { KanbanBoardComponent, KanbanColumn, CardAddedEvent, CardMovedEvent, ColumnRenamedEvent } from 'ngx-kanban-board';
 
 @Component({
   selector: 'app-root',
@@ -17,9 +17,11 @@ import { KanbanBoardComponent, KanbanColumn, CardMovedEvent, ColumnRenamedEvent 
         [columns]="columns"
         [showAddColumn]="true"
         [editableTitles]="true"
+        [showAddCard]="true"
         (cardMoved)="onMoved($event)"
         (columnRenamed)="onRenamed($event)"
         (addColumnRequested)="onAddColumn()"
+        (cardAdded)="onCardAdded($event)"
       />
     </main>
   `,
@@ -91,6 +93,10 @@ export class App {
 
   onRenamed(e: ColumnRenamedEvent): void {
     this.lastEvent.set(`columnRenamed: "${e.previousTitle}" -> "${e.title}"`);
+  }
+
+  onCardAdded(e: CardAddedEvent): void {
+    this.lastEvent.set(`cardAdded: "${e.card.title}" -> ${e.columnId}`);
   }
 
   onAddColumn(): void {

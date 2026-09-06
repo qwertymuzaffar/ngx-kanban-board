@@ -9,12 +9,19 @@ import {
 import {
   CdkDrag,
   CdkDragDrop,
+  CdkDragPlaceholder,
   CdkDropList,
   CdkDropListGroup,
   moveItemInArray,
   transferArrayItem,
 } from '@angular/cdk/drag-drop';
-import type { CardMovedEvent, ColumnRenamedEvent, KanbanCard, KanbanColumn } from './kanban.models';
+import type {
+  CardAddedEvent,
+  CardMovedEvent,
+  ColumnRenamedEvent,
+  KanbanCard,
+  KanbanColumn,
+} from './kanban.models';
 
 /**
  * Drag-and-drop kanban board built on Angular CDK.
@@ -29,7 +36,7 @@ import type { CardMovedEvent, ColumnRenamedEvent, KanbanCard, KanbanColumn } fro
  */
 @Component({
   selector: 'ngx-kanban-board',
-  imports: [CdkDropListGroup, CdkDropList, CdkDrag],
+  imports: [CdkDropListGroup, CdkDropList, CdkDrag, CdkDragPlaceholder],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './kanban-board.component.html',
   styleUrl: './kanban-board.component.scss',
@@ -42,6 +49,8 @@ export class KanbanBoardComponent {
   showAddColumn = input(false);
   /** Enables inline column renaming (double-click or Enter on a title). */
   editableTitles = input(false);
+  /** Shows a "+ Add card" composer at the foot of each column. */
+  showAddCard = input(false);
 
   cardMoved = output<CardMovedEvent>();
   cardClicked = output<KanbanCard>();
@@ -49,11 +58,15 @@ export class KanbanBoardComponent {
   /** The add-column button was clicked - the consumer creates the column. */
   addColumnRequested = output<void>();
   columnRenamed = output<ColumnRenamedEvent>();
+  /** A card was created through the add-card composer. */
+  cardAdded = output<CardAddedEvent>();
 
   /** Card currently lifted via keyboard, if any. */
   readonly liftedCardId = signal<string | null>(null);
   /** Column whose title is being edited inline, if any. */
   readonly editingColumnId = signal<string | null>(null);
+  /** Column whose add-card composer is open, if any. */
+  readonly addingCardColumnId = signal<string | null>(null);
 
   readonly overLimit = computed(() =>
     new Set(
@@ -156,6 +169,54 @@ export class KanbanBoardComponent {
 
   cancelRename(): void {
     this.editingColumnId.set(null);
+  }
+
+  /** Open the add-card composer at the foot of a column. */
+  startAddCard(column: KanbanColumn): void {
+    if (!this.showAddCard() || this.disabled()) return;
+    this.addingCardColumnId.set(column.id);
+    // Same macrotask timing as startEditing: the composer renders on the
+    // next change-detection pass.
+    setTimeout(() => {
+      document.querySelector<HTMLInputElement>('.nkb-card-input')?.focus();
+    });
+  }
+
+  /**
+   * Commit the composer. Unlike add-column, the board creates the card
+   * itself (mirroring rename) and reports it via `cardAdded` - consumers
+   * may replace the generated id. Enter keeps the composer open for
+   * rapid entry; blur commits and closes; an empty value just closes.
+   */
+  commitAddCard(column: KanbanColumn, composer: HTMLInputElement, keepOpen: boolean): void {
+    if (this.addingCardColumnId() !== column.id) return;
+    const title = composer.value.trim();
+    if (!title) {
+      this.addingCardColumnId.set(null);
+      return;
+    }
+    const card: KanbanCard = { id: this.newCardId(), title };
+    column.cards.push(card);
+    this.cardAdded.emit({ card, columnId: column.id });
+    this.columnsChange.emit(this.columns());
+    if (keepOpen) {
+      composer.value = '';
+      composer.focus();
+    } else {
+      this.addingCardColumnId.set(null);
+    }
+  }
+
+  cancelAddCard(): void {
+    this.addingCardColumnId.set(null);
+  }
+
+  private cardSeq = 0;
+
+  private newCardId(): string {
+    return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? `nkb-${crypto.randomUUID()}`
+      : `nkb-card-${++this.cardSeq}`;
   }
 
   private emitMove(card: KanbanCard, fromColumnId: string, toColumnId: string, toIndex: number): void {
