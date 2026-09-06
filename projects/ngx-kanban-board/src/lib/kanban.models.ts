@@ -23,3 +23,9 @@ export interface CardMovedEvent {
   toColumnId: string;
   toIndex: number;
 }
+
+export interface ColumnRenamedEvent {
+  columnId: string;
+  title: string;
+  previousTitle: string;
+}

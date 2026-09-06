@@ -14,7 +14,7 @@ import {
   moveItemInArray,
   transferArrayItem,
 } from '@angular/cdk/drag-drop';
-import type { CardMovedEvent, KanbanCard, KanbanColumn } from './kanban.models';
+import type { CardMovedEvent, ColumnRenamedEvent, KanbanCard, KanbanColumn } from './kanban.models';
 
 /**
  * Drag-and-drop kanban board built on Angular CDK.
@@ -36,15 +36,24 @@ import type { CardMovedEvent, KanbanCard, KanbanColumn } from './kanban.models';
 })
 export class KanbanBoardComponent {
   columns = input.required<KanbanColumn[]>();
-  /** Disables all dragging (read-only board). */
+  /** Disables all dragging and editing (read-only board). */
   disabled = input(false);
+  /** Shows a ghost "+ Add column" button after the last column. */
+  showAddColumn = input(false);
+  /** Enables inline column renaming (double-click or Enter on a title). */
+  editableTitles = input(false);
 
   cardMoved = output<CardMovedEvent>();
   cardClicked = output<KanbanCard>();
   columnsChange = output<KanbanColumn[]>();
+  /** The add-column button was clicked - the consumer creates the column. */
+  addColumnRequested = output<void>();
+  columnRenamed = output<ColumnRenamedEvent>();
 
   /** Card currently lifted via keyboard, if any. */
   readonly liftedCardId = signal<string | null>(null);
+  /** Column whose title is being edited inline, if any. */
+  readonly editingColumnId = signal<string | null>(null);
 
   readonly overLimit = computed(() =>
     new Set(
@@ -114,6 +123,39 @@ export class KanbanBoardComponent {
       this.emitMove(card, column.id, targetCol.id, insertAt);
     }
     this.refocus(card.id);
+  }
+
+  /** Begin inline renaming of a column title. */
+  startEditing(column: KanbanColumn): void {
+    if (!this.editableTitles() || this.disabled()) return;
+    this.editingColumnId.set(column.id);
+    // setTimeout, not queueMicrotask: change detection itself is scheduled
+    // as a microtask, so the input does not exist until the next macrotask.
+    setTimeout(() => {
+      const el = document.querySelector<HTMLInputElement>('.nkb-title-input');
+      el?.focus();
+      el?.select();
+    });
+  }
+
+  /**
+   * Commit an inline rename. No-ops when editing already ended (guards
+   * the blur that fires after Enter/Escape removed the input), when the
+   * value is empty, or when nothing changed.
+   */
+  commitRename(column: KanbanColumn, rawValue: string): void {
+    if (this.editingColumnId() !== column.id) return;
+    this.editingColumnId.set(null);
+    const title = rawValue.trim();
+    if (!title || title === column.title) return;
+    const previousTitle = column.title;
+    column.title = title;
+    this.columnRenamed.emit({ columnId: column.id, title, previousTitle });
+    this.columnsChange.emit(this.columns());
+  }
+
+  cancelRename(): void {
+    this.editingColumnId.set(null);
   }
 
   private emitMove(card: KanbanCard, fromColumnId: string, toColumnId: string, toIndex: number): void {

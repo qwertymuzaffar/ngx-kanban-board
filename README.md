@@ -50,7 +50,9 @@ export class BoardPage {
 | Input | Type | Default | Description |
 |---|---|---|---|
 | `columns` | `KanbanColumn[]` | required | Board model; mutated in place on drop |
-| `disabled` | `boolean` | `false` | Read-only board (dragging off) |
+| `disabled` | `boolean` | `false` | Read-only board (dragging and editing off) |
+| `showAddColumn` | `boolean` | `false` | Ghost "+ Add column" button after the last column |
+| `editableTitles` | `boolean` | `false` | Inline column renaming (double-click or Enter on a title) |
 
 ### Outputs
 
@@ -58,7 +60,33 @@ export class BoardPage {
 |---|---|---|
 | `cardMoved` | `CardMovedEvent` | After any drop (reorder or transfer) |
 | `cardClicked` | `KanbanCard` | Card click |
-| `columnsChange` | `KanbanColumn[]` | After any drop, with the updated model |
+| `columnsChange` | `KanbanColumn[]` | After any drop or rename, with the updated model |
+| `addColumnRequested` | `void` | Add-column button clicked - you create the column |
+| `columnRenamed` | `ColumnRenamedEvent` | Inline rename committed (`columnId`, `title`, `previousTitle`) |
+
+### Managing columns
+
+The board treats `columns` as its working model - column CRUD lives in your
+app, so persistence, permissions, and confirmation flows stay yours:
+
+```ts
+// respond to the built-in add button (showAddColumn)
+onAddColumn() {
+  this.columns.push({ id: crypto.randomUUID(), title: 'New column', cards: [] });
+}
+
+// rename from code (or let editableTitles handle it inline)
+rename(id: string, title: string) {
+  this.columns = this.columns.map(c => (c.id === id ? { ...c, title } : c));
+}
+
+// remove a column - decide what happens to its cards
+remove(id: string) {
+  const dying = this.columns.find(c => c.id === id);
+  this.columns.find(c => c.id !== id)?.cards.push(...(dying?.cards ?? []));
+  this.columns = this.columns.filter(c => c.id !== id);
+}
+```
 
 ### Theming
 

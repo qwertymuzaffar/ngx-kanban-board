@@ -64,6 +64,8 @@ const meta: Meta<KanbanBoardComponent> = {
     cardMoved: { action: 'cardMoved' },
     cardClicked: { action: 'cardClicked' },
     columnsChange: { action: 'columnsChange' },
+    addColumnRequested: { action: 'addColumnRequested' },
+    columnRenamed: { action: 'columnRenamed' },
   },
 };
 export default meta;
@@ -116,3 +118,9 @@ export const DarkTheme: Story = {
     }),
   ],
 };
+
+/** v0.4: ghost add-column button + inline title renaming (double-click a title). */
+export const ColumnEditing: Story = {
+  args: { columns: columns(), showAddColumn: true, editableTitles: true },
+};
+

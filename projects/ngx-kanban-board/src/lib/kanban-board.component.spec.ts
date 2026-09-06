@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { CdkDropList, type CdkDragDrop } from '@angular/cdk/drag-drop';
 import { KanbanBoardComponent } from './kanban-board.component';
-import type { CardMovedEvent, KanbanCard, KanbanColumn } from './kanban.models';
+import type { CardMovedEvent, ColumnRenamedEvent, KanbanCard, KanbanColumn } from './kanban.models';
 
 function makeColumns(): KanbanColumn[] {
   return [
@@ -33,17 +33,25 @@ function makeColumns(): KanbanColumn[] {
   template: `<ngx-kanban-board
     [columns]="columns"
     [disabled]="disabled"
+    [showAddColumn]="showAddColumn"
+    [editableTitles]="editableTitles"
     (cardMoved)="moved.push($event)"
     (cardClicked)="clicked.push($event)"
     (columnsChange)="changes.push($event)"
+    (addColumnRequested)="addRequests = addRequests + 1"
+    (columnRenamed)="renames.push($event)"
   />`,
 })
 class HostComponent {
   columns = makeColumns();
   disabled = false;
+  showAddColumn = false;
+  editableTitles = false;
   moved: CardMovedEvent[] = [];
   clicked: KanbanCard[] = [];
   changes: KanbanColumn[][] = [];
+  addRequests = 0;
+  renames: ColumnRenamedEvent[] = [];
 }
 
 /** Minimal CdkDragDrop stub - only the fields the component reads. */
@@ -228,6 +236,134 @@ describe('KanbanBoardComponent', () => {
       const b2: KanbanBoardComponent = f2.debugElement.children[0].componentInstance;
       expect(b2.liftedCardId()).toBeNull();
       expect(card.getAttribute('tabindex')).toBeNull();
+    });
+  });
+
+  describe('column editing (v0.4)', () => {
+    function createWith(overrides: Partial<HostComponent>): ComponentFixture<HostComponent> {
+      const f = TestBed.createComponent(HostComponent);
+      Object.assign(f.componentInstance, overrides);
+      f.detectChanges();
+      return f;
+    }
+    const root = (f: ComponentFixture<HostComponent>): HTMLElement => f.nativeElement;
+    const dblclick = (t: Element) => t.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    const keydown = (t: Element, key: string) =>
+      t.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+
+    it('hides the add-column button by default', () => {
+      expect(el().querySelector('.nkb-add-column')).toBeNull();
+    });
+
+    it('shows the add-column button and emits on click', () => {
+      const f = createWith({ showAddColumn: true });
+      const btn = root(f).querySelector<HTMLButtonElement>('.nkb-add-column')!;
+      expect(btn.textContent).toContain('Add column');
+      btn.click();
+      btn.click();
+      expect(f.componentInstance.addRequests).toBe(2);
+    });
+
+    it('hides the add-column button when disabled', () => {
+      const f = createWith({ showAddColumn: true, disabled: true });
+      expect(root(f).querySelector('.nkb-add-column')).toBeNull();
+    });
+
+    it('does not start editing when editableTitles is off', () => {
+      const f = createWith({});
+      dblclick(root(f).querySelector('.nkb-column-title')!);
+      f.detectChanges();
+      expect(root(f).querySelector('.nkb-title-input')).toBeNull();
+    });
+
+    it('opens an input with the current title on double-click', () => {
+      const f = createWith({ editableTitles: true });
+      const title = root(f).querySelector('.nkb-column-title')!;
+      expect(title.classList).toContain('nkb-editable');
+      expect(title.getAttribute('tabindex')).toBe('0');
+      dblclick(title);
+      f.detectChanges();
+      const input = root(f).querySelector<HTMLInputElement>('.nkb-title-input')!;
+      expect(input.value).toBe('To Do');
+    });
+
+    it('commits a rename on Enter and emits columnRenamed + columnsChange', () => {
+      const f = createWith({ editableTitles: true });
+      dblclick(root(f).querySelector('.nkb-column-title')!);
+      f.detectChanges();
+      const input = root(f).querySelector<HTMLInputElement>('.nkb-title-input')!;
+      input.value = '  Ready  ';
+      keydown(input, 'Enter');
+      f.detectChanges();
+
+      expect(f.componentInstance.columns[0].title).toBe('Ready');
+      expect(f.componentInstance.renames).toEqual([
+        { columnId: 'todo', title: 'Ready', previousTitle: 'To Do' },
+      ]);
+      expect(f.componentInstance.changes).toHaveLength(1);
+      expect(root(f).querySelector('.nkb-title-input')).toBeNull();
+      expect(root(f).querySelector('.nkb-column-title')?.textContent).toContain('Ready');
+    });
+
+    it('cancels on Escape without emitting', () => {
+      const f = createWith({ editableTitles: true });
+      dblclick(root(f).querySelector('.nkb-column-title')!);
+      f.detectChanges();
+      const input = root(f).querySelector<HTMLInputElement>('.nkb-title-input')!;
+      input.value = 'Ignored';
+      keydown(input, 'Escape');
+      f.detectChanges();
+
+      expect(f.componentInstance.columns[0].title).toBe('To Do');
+      expect(f.componentInstance.renames).toHaveLength(0);
+      expect(root(f).querySelector('.nkb-title-input')).toBeNull();
+    });
+
+    it('commits on blur', () => {
+      const f = createWith({ editableTitles: true });
+      dblclick(root(f).querySelector('.nkb-column-title')!);
+      f.detectChanges();
+      const input = root(f).querySelector<HTMLInputElement>('.nkb-title-input')!;
+      input.value = 'Blurred';
+      input.dispatchEvent(new Event('blur'));
+      f.detectChanges();
+      expect(f.componentInstance.columns[0].title).toBe('Blurred');
+      expect(f.componentInstance.renames).toHaveLength(1);
+    });
+
+    it('treats an empty or unchanged value as a cancel', () => {
+      const f = createWith({ editableTitles: true });
+      dblclick(root(f).querySelector('.nkb-column-title')!);
+      f.detectChanges();
+      let input = root(f).querySelector<HTMLInputElement>('.nkb-title-input')!;
+      input.value = '   ';
+      keydown(input, 'Enter');
+      f.detectChanges();
+      expect(f.componentInstance.columns[0].title).toBe('To Do');
+
+      dblclick(root(f).querySelector('.nkb-column-title')!);
+      f.detectChanges();
+      input = root(f).querySelector<HTMLInputElement>('.nkb-title-input')!;
+      input.value = 'To Do';
+      keydown(input, 'Enter');
+      f.detectChanges();
+      expect(f.componentInstance.renames).toHaveLength(0);
+    });
+
+    it('starts editing via Enter on the focused title', () => {
+      const f = createWith({ editableTitles: true });
+      keydown(root(f).querySelector('.nkb-column-title')!, 'Enter');
+      f.detectChanges();
+      expect(root(f).querySelector('.nkb-title-input')).not.toBeNull();
+    });
+
+    it('ignores editing when disabled', () => {
+      const f = createWith({ editableTitles: true, disabled: true });
+      const title = root(f).querySelector('.nkb-column-title')!;
+      expect(title.classList).not.toContain('nkb-editable');
+      dblclick(title);
+      f.detectChanges();
+      expect(root(f).querySelector('.nkb-title-input')).toBeNull();
     });
   });
 });

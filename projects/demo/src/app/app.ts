@@ -1,5 +1,5 @@
 import { Component, signal } from '@angular/core';
-import { KanbanBoardComponent, KanbanColumn, CardMovedEvent } from 'ngx-kanban-board';
+import { KanbanBoardComponent, KanbanColumn, CardMovedEvent, ColumnRenamedEvent } from 'ngx-kanban-board';
 
 @Component({
   selector: 'app-root',
@@ -13,7 +13,14 @@ import { KanbanBoardComponent, KanbanColumn, CardMovedEvent } from 'ngx-kanban-b
       <div class="last-event">{{ lastEvent() }}</div>
     </header>
     <main>
-      <ngx-kanban-board [columns]="columns" (cardMoved)="onMoved($event)" />
+      <ngx-kanban-board
+        [columns]="columns"
+        [showAddColumn]="true"
+        [editableTitles]="true"
+        (cardMoved)="onMoved($event)"
+        (columnRenamed)="onRenamed($event)"
+        (addColumnRequested)="onAddColumn()"
+      />
     </main>
   `,
   styles: `
@@ -75,7 +82,25 @@ export class App {
     },
   ];
 
+  private readonly palette = ['#8b5cf6', '#06b6d4', '#f97316', '#ec4899'];
+  private added = 0;
+
   onMoved(e: CardMovedEvent): void {
     this.lastEvent.set(`cardMoved: "${e.card.title}" ${e.fromColumnId} -> ${e.toColumnId}[${e.toIndex}]`);
+  }
+
+  onRenamed(e: ColumnRenamedEvent): void {
+    this.lastEvent.set(`columnRenamed: "${e.previousTitle}" -> "${e.title}"`);
+  }
+
+  onAddColumn(): void {
+    this.added++;
+    this.columns.push({
+      id: `col-${this.added}`,
+      title: `New Column ${this.added}`,
+      color: this.palette[(this.added - 1) % this.palette.length],
+      cards: [],
+    });
+    this.lastEvent.set(`addColumnRequested -> created "New Column ${this.added}"`);
   }
 }

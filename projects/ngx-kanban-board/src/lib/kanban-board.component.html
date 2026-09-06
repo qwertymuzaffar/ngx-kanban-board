@@ -8,7 +8,26 @@
     >
       <header class="nkb-column-header">
         <span class="nkb-dot"></span>
-        <h3 class="nkb-column-title">{{ column.title }}</h3>
+        @if (editingColumnId() === column.id) {
+          <input
+            class="nkb-title-input"
+            type="text"
+            [value]="column.title"
+            aria-label="Column title"
+            (keydown.enter)="commitRename(column, $any($event.target).value)"
+            (keydown.escape)="cancelRename()"
+            (blur)="commitRename(column, $any($event.target).value)"
+          />
+        } @else {
+          <h3
+            class="nkb-column-title"
+            [class.nkb-editable]="editableTitles() && !disabled()"
+            [attr.tabindex]="editableTitles() && !disabled() ? 0 : null"
+            [attr.role]="editableTitles() && !disabled() ? 'button' : null"
+            (dblclick)="startEditing(column)"
+            (keydown.enter)="startEditing(column)"
+          >{{ column.title }}</h3>
+        }
         <span class="nkb-count" [class.nkb-count-over]="overLimit().has(column.id)">
           {{ column.cards.length }}@if (column.wipLimit !== undefined) {<span>/{{ column.wipLimit }}</span>}
         </span>
@@ -52,5 +71,10 @@
         }
       </div>
     </section>
+  }
+  @if (showAddColumn() && !disabled()) {
+    <button type="button" class="nkb-add-column" (click)="addColumnRequested.emit()">
+      <span class="nkb-add-plus" aria-hidden="true">+</span> Add column
+    </button>
   }
 </div>
