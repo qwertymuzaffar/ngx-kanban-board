@@ -142,13 +142,7 @@ export class KanbanBoardComponent {
   startEditing(column: KanbanColumn): void {
     if (!this.editableTitles() || this.disabled()) return;
     this.editingColumnId.set(column.id);
-    // setTimeout, not queueMicrotask: change detection itself is scheduled
-    // as a microtask, so the input does not exist until the next macrotask.
-    setTimeout(() => {
-      const el = document.querySelector<HTMLInputElement>('.nkb-title-input');
-      el?.focus();
-      el?.select();
-    });
+    this.focusAfterRender('.nkb-title-input', { select: true });
   }
 
   /**
@@ -164,7 +158,7 @@ export class KanbanBoardComponent {
     const previousTitle = column.title;
     column.title = title;
     this.columnRenamed.emit({ columnId: column.id, title, previousTitle });
-    this.columnsChange.emit(this.columns());
+    this.emitColumns();
   }
 
   cancelRename(): void {
@@ -175,11 +169,7 @@ export class KanbanBoardComponent {
   startAddCard(column: KanbanColumn): void {
     if (!this.showAddCard() || this.disabled()) return;
     this.addingCardColumnId.set(column.id);
-    // Same macrotask timing as startEditing: the composer renders on the
-    // next change-detection pass.
-    setTimeout(() => {
-      document.querySelector<HTMLInputElement>('.nkb-card-input')?.focus();
-    });
+    this.focusAfterRender('.nkb-card-input');
   }
 
   /**
@@ -192,23 +182,32 @@ export class KanbanBoardComponent {
     if (this.addingCardColumnId() !== column.id) return;
     const title = composer.value.trim();
     if (!title) {
-      this.addingCardColumnId.set(null);
+      this.closeCardComposer();
       return;
     }
     const card: KanbanCard = { id: this.newCardId(), title };
     column.cards.push(card);
     this.cardAdded.emit({ card, columnId: column.id });
-    this.columnsChange.emit(this.columns());
+    this.emitColumns();
     if (keepOpen) {
       composer.value = '';
       composer.focus();
     } else {
-      this.addingCardColumnId.set(null);
+      this.closeCardComposer();
     }
   }
 
   cancelAddCard(): void {
+    this.closeCardComposer();
+  }
+
+  private closeCardComposer(): void {
     this.addingCardColumnId.set(null);
+  }
+
+  /** Every mutation of the board reports the full column set to consumers. */
+  private emitColumns(): void {
+    this.columnsChange.emit(this.columns());
   }
 
   private cardSeq = 0;
@@ -221,23 +220,29 @@ export class KanbanBoardComponent {
 
   private emitMove(card: KanbanCard, fromColumnId: string, toColumnId: string, toIndex: number): void {
     this.cardMoved.emit({ card, fromColumnId, toColumnId, toIndex });
-    this.columnsChange.emit(this.columns());
+    this.emitColumns();
+  }
+
+  /** Keep focus on the moved card after the DOM re-renders (cross-column moves recreate the element). */
+  private refocus(cardId: string): void {
+    const escaped =
+      typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+        ? CSS.escape(cardId)
+        : cardId.replace(/["\\]/g, '\\$&');
+    this.focusAfterRender(`[data-nkb-card-id="${escaped}"]`);
   }
 
   /**
-   * Keep focus on the moved card after the DOM re-renders. setTimeout,
-   * not queueMicrotask: cross-column moves recreate the card element,
-   * and change detection is itself a microtask, so the new element does
-   * not exist until the next macrotask (same timing as startEditing).
+   * Focus the element matching `selector` once it exists. setTimeout, not
+   * queueMicrotask: change detection is itself scheduled as a microtask, so
+   * an element created by a signal change does not exist until the next
+   * macrotask. `select` also selects the text of an input.
    */
-  private refocus(cardId: string): void {
+  private focusAfterRender(selector: string, options: { select?: boolean } = {}): void {
     setTimeout(() => {
-      const escaped =
-        typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
-          ? CSS.escape(cardId)
-          : cardId.replace(/["\\]/g, '\\$&');
-      const el = document.querySelector<HTMLElement>(`[data-nkb-card-id="${escaped}"]`);
-      el?.focus();
+      const element = document.querySelector<HTMLElement>(selector);
+      element?.focus();
+      if (options.select && element instanceof HTMLInputElement) element.select();
     });
   }
 }
